@@ -1,0 +1,1 @@
+SCHEMA = {'demand': 'record TEXT PRIMARY KEY, day TEXT NOT NULL, item TEXT NOT NULL, units INTEGER NOT NULL'}
