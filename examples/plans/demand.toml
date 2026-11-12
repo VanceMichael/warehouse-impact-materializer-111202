@@ -1,0 +1,61 @@
+version = "1"
+
+[tables.demand]
+columns = [
+  "record TEXT PRIMARY KEY",
+  "day TEXT NOT NULL",
+  "item TEXT NOT NULL",
+  "units INTEGER NOT NULL",
+]
+key = ["record"]
+
+[tables.daily_units]
+columns = [
+  "day TEXT NOT NULL",
+  "item TEXT NOT NULL",
+  "demand_units INTEGER NOT NULL",
+]
+key = ["day", "item"]
+
+[tables.rolling_7d]
+columns = [
+  "day TEXT NOT NULL",
+  "item TEXT NOT NULL",
+  "window_units INTEGER NOT NULL",
+]
+key = ["day", "item"]
+
+[tables.weekly_units]
+columns = [
+  "week TEXT NOT NULL",
+  "item TEXT NOT NULL",
+  "week_units INTEGER NOT NULL",
+]
+key = ["week", "item"]
+
+[[nodes]]
+name = "daily"
+table = "daily_units"
+source = "demand"
+partition_by = "day"
+unique_key = ["day", "item"]
+rule = { op = "sum", value = "units", output = "demand_units" }
+mapping = { kind = "identity", columns = { source = [{ column = "day", partition = true }, "item", "units"], target = [{ column = "day", partition = true }, "item"] } }
+
+[[nodes]]
+name = "rolling_7d"
+table = "rolling_7d"
+depends_on = ["daily"]
+partition_by = "day"
+unique_key = ["day", "item"]
+rule = { op = "sum", value = "demand_units", output = "window_units" }
+mapping = { kind = "day_offset", window_days = 6, columns = { source = [{ column = "day", partition = true }, "item", "demand_units"], target = [{ column = "day", partition = true }, "item"] } }
+
+[[nodes]]
+name = "weekly"
+table = "weekly_units"
+depends_on = ["daily"]
+partition_by = "week"
+unique_key = ["week", "item"]
+rule = { op = "sum", value = "demand_units", output = "week_units" }
+mapping = { kind = "day_to_week", columns = { source = [{ column = "day", partition = true }, "item", "demand_units"], target = [{ column = "week", partition = true }, "item"] } }
